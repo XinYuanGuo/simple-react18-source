@@ -1,0 +1,24 @@
+{
+  "name": "simple-react18-source",
+  "version": "1.0.0",
+  "description": "简易版的react18源码",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XinYuanGuo/simple-react18-source.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/XinYuanGuo/simple-react18-source/issues"
+  },
+  "homepage": "https://github.com/XinYuanGuo/simple-react18-source#readme",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^3.1.0",
+    "vite": "^4.1.4"
+  }
+}
