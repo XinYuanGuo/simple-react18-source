@@ -6,7 +6,7 @@ import {
 } from "react-dom-bindings/src/client/ReactDOMHostConfig";
 import logger from "shared/logger";
 import { NoFlags } from "./ReactFiberFlags";
-import { HostComponent, HostText } from "./ReactWorkTags";
+import { HostComponent, HostRoot, HostText } from "./ReactWorkTags";
 
 /**
  * 把当前完成的fiber所有的子节点对应的真实dom都挂载到自己父节点的真实dom节点上
@@ -16,21 +16,27 @@ import { HostComponent, HostText } from "./ReactWorkTags";
 function appendAllChildren(parent, workInProgress) {
   let node = workInProgress.child;
   while (node) {
-    // 最后回到父节点则结束
-    if (node.return === workInProgress) {
-      return;
-    }
     if (node.tag === HostComponent || node.tag === HostText) {
       appendInitialChild(parent, node.stateNode);
+      // 再看看第一个节节点是不是原生节点
     } else if (node.child !== null) {
-      // 如果第一个儿子不是原生节点，说明可能是一个组件
+      // node.child.return = node
       node = node.child;
       continue;
     }
-    // 当前节点没有弟弟
+    if (node === workInProgress) {
+      return;
+    }
+    // 如果没有弟弟就找父亲的弟弟
     while (node.sibling === null) {
+      // 如果找到了根节点或者回到了原节点结束
+      if (node.return === null || node.return === workInProgress) {
+        return;
+      }
       node = node.return;
     }
+    // node.sibling.return = node.return
+    // 下一个弟弟节点
     node = node.sibling;
   }
 }
@@ -60,6 +66,9 @@ export function completeWork(current, workInProgress) {
       appendAllChildren(instance, workInProgress);
       workInProgress.stateNode = instance;
       finalizeInitialChildren(instance, type, newProps);
+      bubbleProperties(workInProgress);
+      break;
+    case HostRoot:
       bubbleProperties(workInProgress);
       break;
     default:

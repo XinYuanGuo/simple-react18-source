@@ -7,7 +7,4 @@ const Element = (
 );
 
 const root = createRoot(document.getElementById("root"));
-
-debugger;
-
 root.render(Element);
