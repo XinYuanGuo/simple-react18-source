@@ -58,10 +58,10 @@ function insertOrAppendPlacementNode(node, before, parent) {
   } else {
     const { child } = node;
     if (child !== null) {
-      insertOrAppendPlacementNode(node, parent);
+      insertOrAppendPlacementNode(node, before, parent);
       let { sibling } = child;
       while (sibling !== null) {
-        insertOrAppendPlacementNode(node, parent);
+        insertOrAppendPlacementNode(node, before, parent);
         sibling = sibling.sibling;
       }
     }
