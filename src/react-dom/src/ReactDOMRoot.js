@@ -1,3 +1,4 @@
+import { listenToAllSupportedEvents } from "react-dom-bindings/src/event/DOMPluginEventSystem";
 import {
   createContainer,
   updateContainer,
@@ -19,5 +20,7 @@ ReactDOMRoot.prototype.render = function (children) {
  */
 export function createRoot(container) {
   const root = createContainer(container);
+  // 事件代理
+  listenToAllSupportedEvents(container);
   return new ReactDOMRoot(root);
 }

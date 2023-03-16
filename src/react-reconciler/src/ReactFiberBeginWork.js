@@ -2,7 +2,14 @@ import { shouldSetTextContent } from "react-dom-bindings/src/client/ReactDOMHost
 import logger from "shared/logger";
 import { mountChildFibers, reconcileChildFibers } from "./ReactChildFiber";
 import { processUpdateQueue } from "./ReactFiberClassUpdateQueue";
-import { HostComponent, HostRoot, HostText } from "./ReactWorkTags";
+import { renderWithHooks } from "./ReactFiberHooks";
+import {
+  FunctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+  IndeterminateComponent,
+} from "./ReactWorkTags";
 
 /**
  * 根据虚拟dom构建新的fiber链表, 返回下一个工作单元 如child sibling
@@ -12,6 +19,12 @@ import { HostComponent, HostRoot, HostText } from "./ReactWorkTags";
 export function beginWork(current, workInProgress) {
   logger("beginWork", workInProgress);
   switch (workInProgress.tag) {
+    case IndeterminateComponent:
+      return mountIndeterminateComponent(
+        current,
+        workInProgress,
+        workInProgress.type
+      );
     case HostRoot:
       return updateHostRoot(current, workInProgress);
     case HostComponent:
@@ -21,6 +34,24 @@ export function beginWork(current, workInProgress) {
     default:
       return null;
   }
+}
+
+/**
+ * 挂载未定义的组件 函数组件/类组件
+ * @param {*} current 老的fiber
+ * @param {*} workInProgress 新的fiber
+ * @param {*} Component 组件类型
+ */
+export function mountIndeterminateComponent(
+  current,
+  workInProgress,
+  Component
+) {
+  const props = workInProgress.pendingProps;
+  const value = renderWithHooks(current, workInProgress, Component, props);
+  workInProgress.tag = FunctionComponent;
+  reconcileChildren(current, workInProgress, value);
+  return workInProgress.child;
 }
 
 function updateHostRoot(current, workInProgress) {

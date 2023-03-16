@@ -1,4 +1,5 @@
 import { setInitialProperties } from "./ReactDOMComponent";
+import { precacheFiberNode, updateFiberProps } from "./ReactDOMComponentTree";
 
 export function shouldSetTextContent(type, props) {
   return (
@@ -10,8 +11,10 @@ export function createTextInstance(content) {
   return document.createTextNode(content);
 }
 
-export function createInstance(type, props) {
+export function createInstance(type, props, hostInst) {
   const domElement = document.createElement(type);
+  precacheFiberNode(hostInst, domElement);
+  updateFiberProps(domElement, props);
   // updateFiberProps(domElement, props)
   return domElement;
 }

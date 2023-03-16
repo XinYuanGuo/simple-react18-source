@@ -1,10 +1,14 @@
 import { createRoot } from "react-dom/client";
 
-const Element = (
-  <h1>
-    Hello <span style={{ color: "red" }}>world</span>
-  </h1>
-);
+const FunctionComponent = () => {
+  return (
+    <h1 onClick={() => console.log("click")}>
+      Hello <span style={{ color: "red" }}>world</span>
+    </h1>
+  );
+};
+
+let element = <FunctionComponent />;
 
 const root = createRoot(document.getElementById("root"));
-root.render(Element);
+root.render(element);
