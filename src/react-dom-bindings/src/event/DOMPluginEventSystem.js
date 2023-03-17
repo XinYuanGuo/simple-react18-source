@@ -103,6 +103,48 @@ export function dispatchEventForPlugins(
     eventSystemFlags,
     targetContainer
   );
+
+  processDispatchQueue(dispatchQueue, eventSystemFlags);
+}
+
+function processDispatchQueue(dispatchQueue, eventSystemFlags) {
+  const inCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0;
+  for (let i = 0; i < dispatchQueue; i++) {
+    const { event, listeners } = dispatchQueue[i];
+    processDispatchQueueItemsInOrder(event, listeners, inCapturePhase);
+  }
+}
+
+function processDispatchQueueItemsInOrder(
+  event,
+  dispatchListeners,
+  inCapturePhase
+) {
+  if (inCapturePhase) {
+    for (let i = dispatchListeners.length - 1; i >= 0; i--) {
+      const { listener, currentTarget } = dispatchListeners[i];
+      if (listener.isPropagationStopped()) {
+        return;
+      }
+      executeDispatch(event, listener, currentTarget);
+    }
+  } else {
+    for (let i = 0; i < dispatchListeners.length; i++) {
+      const listener = dispatchListeners[i];
+      if (listener.isPropagationStopped()) {
+        return;
+      }
+      executeDispatch(event, listener, currentTarget);
+    }
+  }
+}
+
+function executeDispatch(event, listener, currentTarget) {
+  // 合成事件实例currentTarget是在不断变化的
+  // event nativeEventTarget是原始事件源，永远不变
+  // event currentTarget 当前的事件源
+  event.currentTarget = currentTarget;
+  listener(event);
 }
 
 function extractEvents(
@@ -141,11 +183,19 @@ export function accumulateSinglePhaseListeners(
       if (reactEventName !== null) {
         const listener = getListener(instance, reactEventName);
         if (listener) {
-          listeners.push(listener);
+          listeners.push(createDispatchListener(instance, listener, stateNode));
         }
       }
     }
     instance = instance.return;
   }
   return listeners;
+}
+
+function createDispatchListener(instance, listener, currentTarget) {
+  return {
+    instance,
+    listener,
+    currentTarget,
+  };
 }
