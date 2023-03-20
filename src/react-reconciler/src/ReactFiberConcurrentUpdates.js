@@ -3,7 +3,7 @@ import { HostRoot } from "./ReactWorkTags";
 // 并发更新队列
 const concurrentQueue = [];
 // 并发更新队列索引
-const concurrentQueuesIndex = 0;
+let concurrentQueuesIndex = 0;
 
 export function finishQueueingConcurrentUpdates() {
   const endIndex = concurrentQueuesIndex;

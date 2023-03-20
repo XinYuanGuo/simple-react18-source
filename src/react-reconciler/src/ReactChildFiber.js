@@ -1,6 +1,10 @@
 import isArray from "shared/isArray";
 import { REACT_ELEMENT_TYPE } from "shared/ReactSymbols";
-import { createFiberFromElement, createFiberFromText } from "./ReactFiber";
+import {
+  createFiberFromElement,
+  createFiberFromText,
+  createWorkInProgress,
+} from "./ReactFiber";
 import { Placement } from "./ReactFiberFlags";
 
 /**
@@ -8,14 +12,36 @@ import { Placement } from "./ReactFiberFlags";
  * @param {*} shouldTracksSideEffects 是否跟踪副作用
  */
 function createChildReconciler(shouldTracksSideEffects) {
-  function reconcileSingleElement(returnFiber, currentFirstFiber, newChild) {
-    const created = createFiberFromElement(newChild);
+  function useFiber(fiber, pendingProps) {
+    const clone = createWorkInProgress(fiber, pendingProps);
+    clone.index = 0;
+    clone.sibling = null;
+    return clone;
+  }
+
+  function reconcileSingleElement(returnFiber, currentFirstChild, element) {
+    // dom-diff
+    const key = element.key;
+    let child = currentFirstChild;
+    while (child !== null) {
+      // 判断此老fiber对应的key和新的虚拟dom对象是否一样
+      if (child.key === key) {
+        if (child.type === element.type) {
+          // 认为此节点可以复用
+          const existing = useFiber(child, element.props);
+          existing.return = returnFiber;
+          return existing;
+        }
+      }
+    }
+
+    const created = createFiberFromElement(element);
     created.return = returnFiber;
     return created;
   }
 
   function placeSingleChild(newFiber) {
-    if (shouldTracksSideEffects) {
+    if (shouldTracksSideEffects && newFiber.alternate === null) {
       // 添加插入副作用
       // 要在最后的提交阶段插入此节点， react渲染分成渲染（创建Fiber树）和提交（更新真实dom）两个阶段
       newFiber.flags |= Placement;
@@ -81,23 +107,23 @@ function createChildReconciler(shouldTracksSideEffects) {
   /**
    *比较子Fiber dom-diff 老Fiber和新的虚拟dom进行对比
    * @param {*} returnFiber 新的父Fiber
-   * @param {*} currentFirstFiber 老Fiber的第一个子Fiber
+   * @param {*} currentFirstChild 老Fiber的第一个子Fiber
    * @param {*} newChild 新的子虚拟dom
    */
-  function reconcileChildFibers(returnFiber, currentFirstFiber, newChild) {
+  function reconcileChildFibers(returnFiber, currentFirstChild, newChild) {
     // 先考虑新的节点只有一个的情况
     if (typeof newChild === "object" && newChild !== null) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
           return placeSingleChild(
-            reconcileSingleElement(returnFiber, currentFirstFiber, newChild)
+            reconcileSingleElement(returnFiber, currentFirstChild, newChild)
           );
         default:
           break;
       }
     }
     if (isArray(newChild)) {
-      return reconcileChildrenArray(returnFiber, currentFirstFiber, newChild);
+      return reconcileChildrenArray(returnFiber, currentFirstChild, newChild);
     }
 
     return null;
