@@ -8,7 +8,10 @@ const internalPropsKey = "__reactProps$" + randomKey;
  */
 export function getClosestInstanceFromNode(targetNode) {
   const targetInst = targetNode[internalInstanceKey];
-  return targetInst;
+  if (targetInst) {
+    return targetInst;
+  }
+  return null;
 }
 
 export function updateFiberProps(node, props) {
