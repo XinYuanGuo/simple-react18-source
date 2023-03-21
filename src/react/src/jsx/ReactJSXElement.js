@@ -1,13 +1,15 @@
 import hasOwnProperty from "shared/hasOwnProperty";
 import { REACT_ELEMENT_TYPE } from "shared/ReactSymbols";
 
-export function jsxDEV(type, config) {
+// React17之前key是放在config里的，children是第三个参数
+// 17之后新版转换函数中，key是放在第三个参数中的 children是放在config中的
+export function jsxDEV(type, config, maybeKey) {
   let propName;
   const props = {};
   let key = null;
   let ref = null;
-  if (hasValidKey(config)) {
-    key = config.key;
+  if (typeof maybeKey !== undefined) {
+    key = maybeKey;
   }
   if (hasValidRef(config)) {
     ref = config.ref;

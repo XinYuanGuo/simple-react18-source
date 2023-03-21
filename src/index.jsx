@@ -1,28 +1,18 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 
-const reducer = (state, action) => {
-  switch (action.type) {
-    case "add":
-      return state + action.payload;
-    default:
-      return state;
-  }
-};
-
-const FunctionComponent = () => {
-  const [num, dispatch] = React.useReducer(reducer, 0);
-  return (
-    <button
-      onClick={() => {
-        dispatch({ type: "add", payload: 1 });
-      }}
-    >
-      {num}
-    </button>
+function FunctionComponent() {
+  const [number, setNumber] = React.useState(0);
+  return number === 0 ? (
+    <div onClick={() => setNumber(number + 1)} key="title" id="title">
+      title
+    </div>
+  ) : (
+    <div onClick={() => setNumber(number + 1)} key="title" id="title2">
+      title2
+    </div>
   );
-};
-
+}
 let element = <FunctionComponent />;
 
 const root = createRoot(document.getElementById("root"));

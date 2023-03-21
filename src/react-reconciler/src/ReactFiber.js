@@ -8,6 +8,10 @@ import {
 
 /**
  * 基于老的fiber和新的属性创建新的fiber
+ * current和workInProgress不是一个对象
+ * 1. workInProgress不存在 创建一个新的fiber，通过alternate互相指向
+ * 2. workInProgress存在 复用
+ * 复用老的fiber对象和老的真实dom
  * @param {*} current
  * @param {*} pendingProps
  * @returns
@@ -78,6 +82,8 @@ export function FiberNode(tag, pendingProps, key) {
   this.alternate = null;
   // 索引 兄弟Fiber中的位置
   this.index = 0;
+  // 存放将要删除的子fiber
+  this.deletions = null;
 }
 
 /**

@@ -13,11 +13,67 @@ let currentHook = null;
 
 const HooksDispatcherOnMount = {
   useReducer: mountReducer,
+  useState: mountState,
 };
 
 const HooksDispatcherOnUpdate = {
   useReducer: updateReducer,
+  useState: updateState,
 };
+
+function baseStateReducer(state, action) {
+  return typeof action === "function" ? action(state) : action;
+}
+
+/**
+ * useState就是内置了reducer的useReducer
+ * @returns
+ */
+function updateState() {
+  return updateReducer(baseStateReducer);
+}
+
+// useState在设置值时如果是旧的值不会触发更新
+function mountState(initialState) {
+  const hook = mountWorkInProgressHook();
+  hook.memoizedState =
+    typeof initialState === "function" ? initialState() : initialState;
+  const queue = {
+    pending: null,
+    dispatch: null,
+    lastRenderedReducer: baseStateReducer,
+    lastRenderedState: initialState,
+  };
+  hook.queue = queue;
+  const dispatch = (queue.dispatch = dispatchSetState.bind(
+    null,
+    currentlyRenderingFiber,
+    queue
+  ));
+  return [hook.memoizedState, dispatch];
+}
+
+function dispatchSetState(fiber, queue, action) {
+  const update = {
+    action,
+    // 是否有紧急的更新
+    hasEagerState: false,
+    // 紧急的更新状态
+    eagerState: null,
+    next: null,
+  };
+  // 派发状态后立刻用上一次的状态和reducer计算状态 如果新状态和老状态一样则不需要更新
+  const { lastRenderedReducer, lastRenderedState } = queue;
+  const eagerState = lastRenderedReducer(lastRenderedState, action);
+  update.hasEagerState = true;
+  update.eagerState = eagerState;
+  if (Object.is(eagerState, lastRenderedState)) {
+    return;
+  }
+  // 下面是真正的入队更新，并调度更新逻辑
+  const root = enqueueConcurrentHookUpdate(fiber, queue, update);
+  scheduleUpdateOnFiber(root, fiber);
+}
 
 // 构建新的hook
 function updateWorkInProgressHook() {
@@ -59,8 +115,12 @@ function updateReducer(reducer) {
     const firstUpdate = pendingQueue.next;
     let update = firstUpdate;
     do {
-      const action = update.action;
-      newState = reducer(newState, action);
+      if (update.hasEagerState) {
+        newState = update.eagerState;
+      } else {
+        const action = update.action;
+        newState = reducer(newState, action);
+      }
       update = update.next;
     } while (update !== null && update !== firstUpdate);
     hook.memoizedState = newState;

@@ -5,7 +5,7 @@ import {
   createFiberFromText,
   createWorkInProgress,
 } from "./ReactFiber";
-import { Placement } from "./ReactFiberFlags";
+import { ChildDeletion, Placement } from "./ReactFiberFlags";
 
 /**
  *
@@ -19,6 +19,26 @@ function createChildReconciler(shouldTracksSideEffects) {
     return clone;
   }
 
+  function deleteChild(returnFiber, childToDelete) {
+    if (!shouldTracksSideEffects) {
+      return;
+    }
+    const deletions = returnFiber.deletions;
+    if (deletions === null) {
+      returnFiber.deletions = [childToDelete];
+      returnFiber.flags |= ChildDeletion;
+    } else {
+      returnFiber.deletions.push(childToDelete);
+    }
+  }
+
+  /**
+   *
+   * @param {*} returnFiber
+   * @param {*} currentFirstChild
+   * @param {*} element
+   * @returns
+   */
   function reconcileSingleElement(returnFiber, currentFirstChild, element) {
     // dom-diff
     const key = element.key;
@@ -32,6 +52,8 @@ function createChildReconciler(shouldTracksSideEffects) {
           existing.return = returnFiber;
           return existing;
         }
+      } else {
+        deleteChild(returnFiber, child);
       }
     }
 
