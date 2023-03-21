@@ -59,7 +59,7 @@ function updateReducer(reducer) {
     const firstUpdate = pendingQueue.next;
     let update = firstUpdate;
     do {
-      const action = updateAction;
+      const action = update.action;
       newState = reducer(newState, action);
       update = update.next;
     } while (update !== null && update !== firstUpdate);
@@ -137,11 +137,15 @@ export function renderWithHooks(current, workInProgress, Component, props) {
   // 如果有老的fiber并且有老的hook链表
   if (current !== null && current.memoizedState !== null) {
     ReactCurrentDispatcher.current = HooksDispatcherOnUpdate;
+  } else {
+    ReactCurrentDispatcher.current = HooksDispatcherOnMount;
   }
-  ReactCurrentDispatcher.current = HooksDispatcherOnMount;
   // 需要再函数组件执行前给ReactCurrentDispatcher.current赋值
   const children = Component(props);
+
   currentlyRenderingFiber = null;
   workInProgressHook = null;
+  currentHook = null;
+
   return children;
 }

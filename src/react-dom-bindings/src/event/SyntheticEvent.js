@@ -1,5 +1,4 @@
 import assign from "shared/assign";
-import hasOwnProperty from "shared/hasOwnProperty";
 
 function functionThatReturnsTrue() {
   return true;
@@ -31,10 +30,10 @@ function createSyntheticEvent(Interface) {
 
     // 把此接口上对应的属性从原生事件上拷贝到合成事件实例上
     for (const propName in Interface) {
-      if ((!Interface, hasOwnProperty(propName))) {
+      if (!Interface.hasOwnProperty(propName)) {
         continue;
       }
-      this[propName] = nativeEvent(propName);
+      this[propName] = nativeEvent[propName];
     }
     this.isDefaultPrevented = functionThatReturnsFalse;
     this.isPropagationStopped = functionThatReturnsFalse;

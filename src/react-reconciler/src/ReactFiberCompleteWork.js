@@ -3,10 +3,16 @@ import {
   createInstance,
   createTextInstance,
   finalizeInitialChildren,
+  prepareUpdate,
 } from "react-dom-bindings/src/client/ReactDOMHostConfig";
 import logger from "shared/logger";
 import { NoFlags, Update } from "./ReactFiberFlags";
-import { HostComponent, HostRoot, HostText } from "./ReactWorkTags";
+import {
+  FunctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+} from "./ReactWorkTags";
 
 /**
  * 把当前完成的fiber所有的子节点对应的真实dom都挂载到自己父节点的真实dom节点上
@@ -46,7 +52,7 @@ function appendAllChildren(parent, workInProgress) {
  * @param {*} workInProgress
  */
 function markUpdate(workInProgress) {
-  workInProgress.flags != Update;
+  workInProgress.flags |= Update;
 }
 
 /**
@@ -88,8 +94,8 @@ export function completeWork(current, workInProgress) {
     case HostComponent:
       const { type } = workInProgress;
       // 如果老fiber存在，并且老fiber上真实dom节点，要走节点更新的逻辑
-      if (current !== null && workingProgress.stateNode !== null) {
-        updateHostComponent(current, workingProgress, type, newProps);
+      if (current !== null && workInProgress.stateNode !== null) {
+        updateHostComponent(current, workInProgress, type, newProps);
       } else {
         // 创建真实dom的实例
         const instance = createInstance(type, newProps, workInProgress);
@@ -101,6 +107,8 @@ export function completeWork(current, workInProgress) {
       }
 
       break;
+    case FunctionComponent:
+      bubbleProperties(workInProgress);
     case HostRoot:
       bubbleProperties(workInProgress);
       break;

@@ -49,7 +49,7 @@ function createChildReconciler(shouldTracksSideEffects) {
     return newFiber;
   }
 
-  function crateChild(returnFiber, newChild) {
+  function createChild(returnFiber, newChild) {
     if (
       (typeof newChild === "string" && newChild !== "") ||
       typeof newChild === "number"
@@ -87,7 +87,7 @@ function createChildReconciler(shouldTracksSideEffects) {
     let previousNewFiber = null;
     let newIndex = 0;
     for (; newIndex < newChildren.length; newIndex++) {
-      const newFiber = crateChild(returnFiber, newChildren[newIndex]);
+      const newFiber = createChild(returnFiber, newChildren[newIndex]);
       if (newFiber === null) continue;
       placeChild(newFiber, newIndex);
       // previousNewFiber为null的话说明这个fiber是第一个fiber

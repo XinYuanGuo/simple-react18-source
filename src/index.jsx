@@ -1,23 +1,30 @@
+import * as React from "react";
 import { createRoot } from "react-dom/client";
 
-// const FunctionComponent = () => {
-//   return (
-//     <h1 onClick={() => console.log("click")}>
-//       Hello <span style={{ color: "red" }}>world</span>
-//     </h1>
-//   );
-// };
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "add":
+      return state + action.payload;
+    default:
+      return state;
+  }
+};
 
-// let element = <FunctionComponent />;
+const FunctionComponent = () => {
+  const [num, dispatch] = React.useReducer(reducer, 0);
+  return (
+    <button
+      onClick={() => {
+        dispatch({ type: "add", payload: 1 });
+      }}
+    >
+      {num}
+    </button>
+  );
+};
 
-let element = (
-  <h1>
-    hello
-    <span style={{ color: "red" }}>world</span>
-  </h1>
-);
+let element = <FunctionComponent />;
 
 const root = createRoot(document.getElementById("root"));
 
-debugger;
 root.render(element);

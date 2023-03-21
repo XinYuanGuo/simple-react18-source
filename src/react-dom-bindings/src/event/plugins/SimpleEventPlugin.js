@@ -46,7 +46,7 @@ function extractEvents(
     const event = new SyntheticEventCtor(
       reactName,
       domEventName,
-      null,
+      targetInst,
       nativeEvent,
       nativeEventTarget
     );

@@ -41,7 +41,6 @@ function dispatchDiscreteEvent(
  * @param {*} nativeEvent
  */
 function dispatchEvent(domEventName, eventSystemFlags, container, nativeEvent) {
-  // console.log(domEventName, eventSystemFlags, container, nativeEvent);
   // 获取事件源，它是一个真实dom
   const nativeEventTarget = getEventTarget(nativeEvent);
   // 找到距离事件源最近的fiber节点

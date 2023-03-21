@@ -109,7 +109,7 @@ export function dispatchEventForPlugins(
 
 function processDispatchQueue(dispatchQueue, eventSystemFlags) {
   const inCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0;
-  for (let i = 0; i < dispatchQueue; i++) {
+  for (let i = 0; i < dispatchQueue.length; i++) {
     const { event, listeners } = dispatchQueue[i];
     processDispatchQueueItemsInOrder(event, listeners, inCapturePhase);
   }
@@ -123,15 +123,15 @@ function processDispatchQueueItemsInOrder(
   if (inCapturePhase) {
     for (let i = dispatchListeners.length - 1; i >= 0; i--) {
       const { listener, currentTarget } = dispatchListeners[i];
-      if (listener.isPropagationStopped()) {
+      if (event.isPropagationStopped()) {
         return;
       }
       executeDispatch(event, listener, currentTarget);
     }
   } else {
     for (let i = 0; i < dispatchListeners.length; i++) {
-      const listener = dispatchListeners[i];
-      if (listener.isPropagationStopped()) {
+      const { currentTarget, listener } = dispatchListeners[i];
+      if (event.isPropagationStopped()) {
         return;
       }
       executeDispatch(event, listener, currentTarget);
