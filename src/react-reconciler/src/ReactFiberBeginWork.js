@@ -1,5 +1,4 @@
 import { shouldSetTextContent } from "react-dom-bindings/src/client/ReactDOMHostConfig";
-import logger from "shared/logger";
 import { mountChildFibers, reconcileChildFibers } from "./ReactChildFiber";
 import { processUpdateQueue } from "./ReactFiberClassUpdateQueue";
 import { renderWithHooks } from "./ReactFiberHooks";
@@ -17,7 +16,6 @@ import {
  * @param {*} workInProgress 新fiber
  */
 export function beginWork(current, workInProgress) {
-  logger("beginWork", workInProgress);
   switch (workInProgress.tag) {
     case IndeterminateComponent:
       return mountIndeterminateComponent(

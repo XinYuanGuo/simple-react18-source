@@ -5,7 +5,6 @@ import {
   finalizeInitialChildren,
   prepareUpdate,
 } from "react-dom-bindings/src/client/ReactDOMHostConfig";
-import logger from "shared/logger";
 import { NoFlags, Update } from "./ReactFiberFlags";
 import {
   FunctionComponent,
@@ -80,7 +79,6 @@ function updateHostComponent(current, workingProgress, type, newProps) {
  * @param {*} workInProgress 新的构建的Fiber
  */
 export function completeWork(current, workInProgress) {
-  logger("completeWork", workInProgress);
   const newProps = workInProgress.pendingProps;
   switch (workInProgress.tag) {
     case HostText:
@@ -103,9 +101,8 @@ export function completeWork(current, workInProgress) {
         appendAllChildren(instance, workInProgress);
         workInProgress.stateNode = instance;
         finalizeInitialChildren(instance, type, newProps);
-        bubbleProperties(workInProgress);
       }
-
+      bubbleProperties(workInProgress);
       break;
     case FunctionComponent:
       bubbleProperties(workInProgress);
