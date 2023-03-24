@@ -1,4 +1,8 @@
-import { scheduleCallback } from "scheduler";
+import {
+  NormalPriority as NormalSchedulerPriority,
+  scheduleCallback,
+  shouldYield,
+} from "scheduler";
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
 import {
@@ -35,14 +39,17 @@ function ensureRootIsScheduled(root) {
   }
   workInProgressRoot = root;
   // 告诉浏览器执行performConcurrentWorkOnRoot
-  scheduleCallback(performConcurrentWorkOnRoot.bind(null, root));
+  scheduleCallback(
+    NormalSchedulerPriority,
+    performConcurrentWorkOnRoot.bind(null, root)
+  );
 }
 
 /**
  * 根据虚拟dom构建fiber树，创建真实dom节点，还需要把真实的dom节点插入容器
  * @param {*} root
  */
-function performConcurrentWorkOnRoot(root) {
+function performConcurrentWorkOnRoot(root, didTimeout) {
   // 第一次渲染是同步的
   renderRootSync(root);
   // 开始进入提交阶段，就是执行副作用修改真实dom
@@ -74,7 +81,7 @@ function commitRoot(root) {
       if (!rootDoesHavePassiveEffect) {
         rootDoesHavePassiveEffect = true;
         // 开启一个宏任务 等待渲染过后执行
-        scheduleCallback(flushPassiveEffect);
+        scheduleCallback(NormalSchedulerPriority, flushPassiveEffect);
       }
     }
   }
@@ -109,6 +116,12 @@ function prepareFreshStack(root) {
 
 function workLoopSync() {
   while (workInProgress !== null) {
+    performUnitOfWork(workInProgress);
+  }
+}
+
+function workLoopConcurrent() {
+  while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress);
   }
 }
