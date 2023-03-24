@@ -1,16 +1,23 @@
 import { scheduleCallback } from "scheduler";
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
-import { commitMutationEffectsOnFiber } from "./ReactFiberCommitWork";
+import {
+  commitLayoutEffects,
+  commitMutationEffectsOnFiber,
+  commitPassiveMountEffects,
+  commitPassiveUnmountEffects,
+} from "./ReactFiberCommitWork";
 import { completeWork } from "./ReactFiberCompleteWork";
 import { finishQueueingConcurrentUpdates } from "./ReactFiberConcurrentUpdates";
-import { MutationMask, NoFlags } from "./ReactFiberFlags";
+import { MutationMask, NoFlags, Passive } from "./ReactFiberFlags";
 
 // 当前工作节点
 let workInProgress = null;
-
-//
 let workInProgressRoot = null;
+// 此根节点上有没有useEffect类似的副作用
+let rootDoesHavePassiveEffect = false;
+// 具有useEffect副作用的根节点 FiberRootNode,根fiber.stateNode
+let rootWithPendingPassiveEffects = null;
 
 /**
  * 计划更新root节点
@@ -45,14 +52,45 @@ function performConcurrentWorkOnRoot(root) {
   workInProgressRoot = null;
 }
 
+function flushPassiveEffect() {
+  if (rootWithPendingPassiveEffects !== null) {
+    const root = rootWithPendingPassiveEffects;
+    // 执行卸载副作用
+    commitPassiveUnmountEffects(root.current);
+    // 执行挂载副作用
+    commitPassiveMountEffects(root, root.current);
+  }
+}
+
 function commitRoot(root) {
+  console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+  // 先获取新的构建好的fiber树的根fiber
   const { finishedWork } = root;
+  if (finishedWork) {
+    if (
+      (finishedWork.subtreeFlags & Passive) !== NoFlags ||
+      finishedWork.flags & (Passive !== NoFlags)
+    ) {
+      if (!rootDoesHavePassiveEffect) {
+        rootDoesHavePassiveEffect = true;
+        // 开启一个宏任务 等待渲染过后执行
+        scheduleCallback(flushPassiveEffect);
+      }
+    }
+  }
   // 判断子树有没有副作用
   const subtreeHasEffect =
     (finishedWork.subtreeFlags & MutationMask) !== NoFlags;
   const rootHasEffect = (finishedWork.flags & MutationMask) !== NoFlags;
   if (subtreeHasEffect || rootHasEffect) {
+    // dom变更
     commitMutationEffectsOnFiber(finishedWork, root);
+    commitLayoutEffects(finishedWork, root);
+    // 如果有副作用那么将root赋值给rootWithPendingPassiveEffects, 在下一个宏任务中拿到root
+    if (rootDoesHavePassiveEffect) {
+      rootDoesHavePassiveEffect = false;
+      rootWithPendingPassiveEffects = root;
+    }
   }
   // 等dom变更后，可以把root的current指向新的fiber树
   root.current = finishedWork;
