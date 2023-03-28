@@ -4,7 +4,8 @@ import {
   Passive as PassiveEffect,
   Update as UpdateEffect,
 } from "./ReactFiberFlags";
-import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
+import { NoLanes } from "./ReactFiberLane";
+import { requestUpdateLane, scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
 import {
   HasEffect as HookHasEffect,
   Layout as HookLayout,
@@ -179,7 +180,10 @@ function mountState(initialState) {
 }
 
 function dispatchSetState(fiber, queue, action) {
+  // 获取当前的更新赛道
+  const lane = requestUpdateLane();
   const update = {
+    lane,
     action,
     // 是否有紧急的更新
     hasEagerState: false,
@@ -187,17 +191,24 @@ function dispatchSetState(fiber, queue, action) {
     eagerState: null,
     next: null,
   };
-  // 派发状态后立刻用上一次的状态和reducer计算状态 如果新状态和老状态一样则不需要更新
-  const { lastRenderedReducer, lastRenderedState } = queue;
-  const eagerState = lastRenderedReducer(lastRenderedState, action);
-  update.hasEagerState = true;
-  update.eagerState = eagerState;
-  if (Object.is(eagerState, lastRenderedState)) {
-    return;
+  const alternate = fiber.alternate;
+  // 当更新队列为空时 派发状态后立刻用上一次的状态和reducer计算状态 如果新状态和老状态一样则不需要更新
+  if (
+    fiber.lanes === NoLanes &&
+    (alternate === null || alternate.lanes === NoLanes)
+  ) {
+    const { lastRenderedReducer, lastRenderedState } = queue;
+    const eagerState = lastRenderedReducer(lastRenderedState, action);
+    update.hasEagerState = true;
+    update.eagerState = eagerState;
+    if (Object.is(eagerState, lastRenderedState)) {
+      return;
+    }
   }
+
   // 下面是真正的入队更新，并调度更新逻辑
-  const root = enqueueConcurrentHookUpdate(fiber, queue, update);
-  scheduleUpdateOnFiber(root, fiber);
+  const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane);
+  scheduleUpdateOnFiber(root, fiber, lane);
 }
 
 // 构建新的hook
@@ -259,6 +270,8 @@ function mountReducer(reducer, initialArg) {
   const queue = {
     pending: null,
     dispatch: null,
+    lastRenderedReducer: reducer,
+    lastRenderedState: initialArg,
   };
   hook.queue = queue;
   const dispatch = (queue.dispatch = dispatchReducerAction.bind(

@@ -33,7 +33,7 @@ export function finishQueueingConcurrentUpdates() {
  * @param {*} queue 要更新的hook对应的更新队列
  * @param {*} update 更新对象
  */
-export function enqueueConcurrentHookUpdate(fiber, queue, update) {
+export function enqueueConcurrentHookUpdate(fiber, queue, update, lane) {
   enqueueUpdate(fiber, queue, update);
   return getRootForUpdatedFiber(fiber);
 }
