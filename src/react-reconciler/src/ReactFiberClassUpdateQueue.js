@@ -1,5 +1,5 @@
 import assign from "shared/assign";
-import { markUpdateLaneFromFiberToRoot } from "./ReactFiberConcurrentUpdates";
+import { enqueueConcurrentClassUpdate } from "./ReactFiberConcurrentUpdates";
 
 export const UpdateState = 0;
 
@@ -21,18 +21,25 @@ export function createUpdate() {
   return update;
 }
 
-export function enqueueUpdate(fiber, update) {
+export function enqueueUpdate(fiber, update, lane) {
+  // const updateQueue = fiber.updateQueue;
+  // const pending = updateQueue.shared.pending;
+  // if (pending === null) {
+  //   update.next = update;
+  // } else {
+  //   update.next = pending.next;
+  //   pending.next = update;
+  // }
+  // updateQueue.shared.pending = update;
+  // // 标记更新赛道(0~32优先级)从当前的Fiber到根节点
+  // return markUpdateLaneFromFiberToRoot(fiber);
+
+  // 获取更新队列
   const updateQueue = fiber.updateQueue;
-  const pending = updateQueue.shared.pending;
-  if (pending === null) {
-    update.next = update;
-  } else {
-    update.next = pending.next;
-    pending.next = update;
-  }
-  updateQueue.shared.pending = update;
-  // 标记更新赛道(0~32优先级)从当前的Fiber到根节点
-  return markUpdateLaneFromFiberToRoot(fiber);
+  // 获取共享队列
+  const sharedQueue = updateQueue.shared;
+
+  return enqueueConcurrentClassUpdate(fiber, sharedQueue, update, lane);
 }
 
 /**
@@ -79,5 +86,19 @@ function getStateFromUpdate(update, prevState) {
 
     default:
       break;
+  }
+}
+
+export function cloneUpdateQueue(current, workInProgress) {
+  const workInProgressQueue = workInProgress.updateQueue;
+  const currentQueue = current.updateQueue;
+  if (workInProgressQueue === currentQueue) {
+    const clone = {
+      baseState: currentQueue.baseState,
+      firstBaseUpdate: currentQueue.firstBaseUpdate,
+      lastBaseUpdate: currentQueue.lastBaseUpdate,
+      shared: currentQueue.shared,
+    };
+    workInProgress.updateQueue = clone;
   }
 }

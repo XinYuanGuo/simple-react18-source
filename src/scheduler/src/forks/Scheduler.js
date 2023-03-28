@@ -1,4 +1,4 @@
-import { peek, push } from "./ScheduleMinHeap";
+import { peek, pop, push } from "./ScheduleMinHeap";
 import {
   IdlePriority,
   ImmediatePriority,
@@ -170,9 +170,10 @@ function performWorkUntilDeadline() {
 
 export {
   shouldYieldToHost as shouldYield,
-  IdlePriority,
-  ImmediatePriority,
-  LowPriority,
-  NormalPriority,
-  UserBlockingPriority,
+  scheduleCallback as unstable_scheduleCallback,
+  IdlePriority as unstable_IdlePriority,
+  ImmediatePriority as unstable_ImmediatePriority,
+  LowPriority as unstable_LowPriority,
+  NormalPriority as unstable_NormalPriority,
+  UserBlockingPriority as unstable_UserBlockingPriority,
 };

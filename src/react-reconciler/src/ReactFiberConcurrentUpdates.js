@@ -1,7 +1,7 @@
 import { HostRoot } from "./ReactWorkTags";
 
 // 并发更新队列
-const concurrentQueue = [];
+const concurrentQueues = [];
 // 并发更新队列索引
 let concurrentQueuesIndex = 0;
 
@@ -10,9 +10,10 @@ export function finishQueueingConcurrentUpdates() {
   concurrentQueuesIndex = 0;
   let i = 0;
   while (i < endIndex) {
-    const fiber = concurrentQueue[i++];
-    const queue = concurrentQueue[i++];
-    const update = concurrentQueue[i++];
+    const fiber = concurrentQueues[i++];
+    const queue = concurrentQueues[i++];
+    const update = concurrentQueues[i++];
+    const lane = concurrentQueues[i++];
     if (queue !== null && update !== null) {
       const pending = queue.pending;
       if (pending === null) {
@@ -53,27 +54,40 @@ function getRootForUpdatedFiber(sourceFiber) {
  * @param {*} queue
  * @param {*} update
  */
-function enqueueUpdate(fiber, queue, update) {
-  concurrentQueue[concurrentQueuesIndex++] = fiber;
-  concurrentQueue[concurrentQueuesIndex++] = queue;
-  concurrentQueue[concurrentQueuesIndex++] = update;
+function enqueueUpdate(fiber, queue, update, lane) {
+  concurrentQueues[concurrentQueuesIndex++] = fiber;
+  concurrentQueues[concurrentQueuesIndex++] = queue;
+  concurrentQueues[concurrentQueuesIndex++] = update;
+  concurrentQueues[concurrentQueuesIndex++] = lane;
 }
 
 /**
  * 本来此方法要处理更新优先级的问题
  * 先实现向上找到根节点
  */
-export function markUpdateLaneFromFiberToRoot(sourceFiber) {
-  let node = sourceFiber;
-  let parent = sourceFiber.return;
-  // 根节点的parent为null
-  while (parent !== null) {
-    node = parent;
-    parent = parent.return;
-  }
-  if (node.tag === HostRoot) {
-    // FiberRootNode
-    return node.stateNode;
-  }
-  return null;
+// export function markUpdateLaneFromFiberToRoot(sourceFiber) {
+//   let node = sourceFiber;
+//   let parent = sourceFiber.return;
+//   // 根节点的parent为null
+//   while (parent !== null) {
+//     node = parent;
+//     parent = parent.return;
+//   }
+//   if (node.tag === HostRoot) {
+//     // FiberRootNode
+//     return node.stateNode;
+//   }
+//   return null;
+// }
+
+/**
+ * 把更新入队
+ * @param {*} fiber 入队fiber 根fiber
+ * @param {*} queue 待生效的队列
+ * @param {*} update 更新
+ * @param {*} lane 更新的赛道
+ */
+export function enqueueConcurrentClassUpdate(fiber, queue, update, lane) {
+  enqueueUpdate(fiber, queue, update, lane);
+  return getRootForUpdatedFiber(fiber);
 }

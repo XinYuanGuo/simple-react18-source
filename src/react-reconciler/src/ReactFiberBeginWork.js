@@ -1,6 +1,9 @@
 import { shouldSetTextContent } from "react-dom-bindings/src/client/ReactDOMHostConfig";
 import { mountChildFibers, reconcileChildFibers } from "./ReactChildFiber";
-import { processUpdateQueue } from "./ReactFiberClassUpdateQueue";
+import {
+  cloneUpdateQueue,
+  processUpdateQueue,
+} from "./ReactFiberClassUpdateQueue";
 import { renderWithHooks } from "./ReactFiberHooks";
 import {
   FunctionComponent,
@@ -15,13 +18,14 @@ import {
  * @param {*} current 老fiber
  * @param {*} workInProgress 新fiber
  */
-export function beginWork(current, workInProgress) {
+export function beginWork(current, workInProgress, renderLanes) {
   switch (workInProgress.tag) {
     case IndeterminateComponent:
       return mountIndeterminateComponent(
         current,
         workInProgress,
-        workInProgress.type
+        workInProgress.type,
+        renderLanes
       );
     case FunctionComponent:
       const Component = workInProgress.type;
@@ -30,12 +34,13 @@ export function beginWork(current, workInProgress) {
         current,
         workInProgress,
         Component,
-        newProps
+        newProps,
+        renderLanes
       );
     case HostRoot:
-      return updateHostRoot(current, workInProgress);
+      return updateHostRoot(current, workInProgress, renderLanes);
     case HostComponent:
-      return updateHostComponent(current, workInProgress);
+      return updateHostComponent(current, workInProgress, renderLanes);
     case HostText:
       return null;
     default:
@@ -72,8 +77,10 @@ export function mountIndeterminateComponent(
   return workInProgress.child;
 }
 
-function updateHostRoot(current, workInProgress) {
-  processUpdateQueue(workInProgress);
+function updateHostRoot(current, workInProgress, renderLanes) {
+  const nextProps = workInProgress.pendingProps;
+  cloneUpdateQueue(current, workInProgress);
+  processUpdateQueue(workInProgress, nextProps, renderLanes);
   const nextState = workInProgress.memoizedState;
   const nextChildren = nextState.element;
   // 协调子节点 dom-diff算法

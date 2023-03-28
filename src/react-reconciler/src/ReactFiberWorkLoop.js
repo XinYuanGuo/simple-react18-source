@@ -1,8 +1,12 @@
+import { getCurrentEventPriority } from "react-dom-bindings/src/client/ReactDOMHostConfig";
 import {
-  NormalPriority as NormalSchedulerPriority,
-  scheduleCallback,
-  shouldYield,
-} from "scheduler";
+  ContinuousEventPriority,
+  DefaultEventPriority,
+  DiscreteEventPriority,
+  getCurrentUpdatePriority,
+  IdleEventPriority,
+  lanesToEventPriority,
+} from "./ReactEventPriorities";
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
 import {
@@ -14,6 +18,21 @@ import {
 import { completeWork } from "./ReactFiberCompleteWork";
 import { finishQueueingConcurrentUpdates } from "./ReactFiberConcurrentUpdates";
 import { MutationMask, NoFlags, Passive } from "./ReactFiberFlags";
+import {
+  getHighestPriorityLane,
+  getNextLanes,
+  markRootUpdated,
+  NoLanes,
+  SyncLane,
+} from "./ReactFiberLane";
+import {
+  IdlePriority as IdleSchedulerPriority,
+  ImmediatePriority as ImmediateSchedulerPriority,
+  NormalPriority as NormalSchedulerPriority,
+  scheduleCallback,
+  shouldYield,
+  UserBlockingPriority as UserBlockingSchedulerPriority,
+} from "./Scheduler";
 
 // 当前工作节点
 let workInProgress = null;
@@ -22,27 +41,60 @@ let workInProgressRoot = null;
 let rootDoesHavePassiveEffect = false;
 // 具有useEffect副作用的根节点 FiberRootNode,根fiber.stateNode
 let rootWithPendingPassiveEffects = null;
+let workInProgressRenderLanes = NoLanes;
 
 /**
  * 计划更新root节点
  * 源码中此处有一个任务调度的功能
  * @param {*} root
  */
-export function scheduleUpdateOnFiber(root) {
+export function scheduleUpdateOnFiber(root, fiber, lane) {
+  markRootUpdated(root, lane);
   // 确保调度执行root上的更新
   ensureRootIsScheduled(root);
 }
 
 function ensureRootIsScheduled(root) {
-  if (workInProgressRoot) {
-    return;
+  // 获取当前优先级最高的车道
+  const nextLanes = getNextLanes(root, NoLanes);
+  // 获取新的调度优先级
+  let newCallbackPriority = getHighestPriorityLane(nextLanes);
+  // 如果是同步赛道
+  if (newCallbackPriority === SyncLane) {
+  } else {
+    // 如果不是同步赛道 就需要调度一个新的任务
+    let schedulerPriorityLevel;
+    switch (lanesToEventPriority(nextLanes)) {
+      case DiscreteEventPriority:
+        schedulerPriorityLevel = ImmediateSchedulerPriority;
+        break;
+      case ContinuousEventPriority:
+        schedulerPriorityLevel = UserBlockingSchedulerPriority;
+        break;
+      case DefaultEventPriority:
+        schedulerPriorityLevel = NormalSchedulerPriority;
+        break;
+      case IdleEventPriority:
+        schedulerPriorityLevel = IdleSchedulerPriority;
+        break;
+      default:
+        schedulerPriorityLevel = NormalSchedulerPriority;
+        break;
+    }
+    scheduleCallback(
+      schedulerPriorityLevel,
+      performConcurrentWorkOnRoot.bind(null, root)
+    );
   }
-  workInProgressRoot = root;
-  // 告诉浏览器执行performConcurrentWorkOnRoot
-  scheduleCallback(
-    NormalSchedulerPriority,
-    performConcurrentWorkOnRoot.bind(null, root)
-  );
+  // if (workInProgressRoot) {
+  //   return;
+  // }
+  // workInProgressRoot = root;
+  // // 告诉浏览器执行performConcurrentWorkOnRoot
+  // scheduleCallback(
+  //   NormalSchedulerPriority,
+  //   performConcurrentWorkOnRoot.bind(null, root)
+  // );
 }
 
 /**
@@ -50,13 +102,17 @@ function ensureRootIsScheduled(root) {
  * @param {*} root
  */
 function performConcurrentWorkOnRoot(root, didTimeout) {
+  // 获取当前优先级最高的车道
+  const nextLanes = getNextLanes(root, NoLanes);
+  if (nextLanes === NoLanes) {
+    return null;
+  }
   // 第一次渲染是同步的
-  renderRootSync(root);
+  renderRootSync(root, nextLanes);
   // 开始进入提交阶段，就是执行副作用修改真实dom
   const finishedWork = root.current.alternate;
   root.finishedWork = finishedWork;
   commitRoot(root);
-  workInProgressRoot = null;
 }
 
 function flushPassiveEffect() {
@@ -73,6 +129,8 @@ function commitRoot(root) {
   console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
   // 先获取新的构建好的fiber树的根fiber
   const { finishedWork } = root;
+  workInProgressRoot = null;
+  workInProgressRenderLanes = null;
   if (finishedWork) {
     if (
       (finishedWork.subtreeFlags & Passive) !== NoFlags ||
@@ -103,14 +161,20 @@ function commitRoot(root) {
   root.current = finishedWork;
 }
 
-function renderRootSync(root) {
+function renderRootSync(root, renderLanes) {
   // 开始构建fiber树
-  prepareFreshStack(root);
+  prepareFreshStack(root, renderLanes);
   workLoopSync();
 }
 
-function prepareFreshStack(root) {
-  workInProgress = createWorkInProgress(root.current, null);
+function prepareFreshStack(root, renderLanes) {
+  if (
+    root !== workInProgressRoot ||
+    workInProgressRenderLanes !== renderLanes
+  ) {
+    workInProgress = createWorkInProgress(root.current, null);
+  }
+  workInProgressRenderLanes = renderLanes;
   finishQueueingConcurrentUpdates();
 }
 
@@ -130,7 +194,7 @@ function performUnitOfWork(unitOfWork) {
   // 获取新fiber对应的老fiber
   const current = unitOfWork.alternate;
   // 完成当前fiber的子fiber链表构建后
-  const next = beginWork(current, unitOfWork);
+  const next = beginWork(current, unitOfWork, workInProgressRenderLanes);
   unitOfWork.memoizedProps = unitOfWork.pendingProps;
   // 没有子节点代表当前的fiber已经完成了
   if (next === null) {
@@ -159,4 +223,17 @@ function completeUnitOfWork(unitOfWork) {
     completedWork = returnFiber;
     workInProgress = completedWork;
   } while (completedWork !== null);
+}
+
+/**
+ * 请求一个更新车道
+ * @returns
+ */
+export function requestUpdateLane() {
+  const updateLane = getCurrentUpdatePriority();
+  if (updateLane !== NoLanes) {
+    return updateLane;
+  }
+  const eventLane = getCurrentEventPriority();
+  return eventLane;
 }
