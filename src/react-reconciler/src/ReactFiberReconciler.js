@@ -18,7 +18,7 @@ export function updateContainer(element, container) {
   const lane = requestUpdateLane(current);
 
   // 创建更新
-  const update = createUpdate();
+  const update = createUpdate(lane);
   // 要更新的虚拟dom
   update.payload = { element };
   // 把此更新对象添加到current这个根fiber的更新队列上

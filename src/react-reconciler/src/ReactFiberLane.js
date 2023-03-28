@@ -64,3 +64,16 @@ export function getHighestPriorityLane(lanes) {
 export function includesNonIdleWork(lanes) {
   return (lanes & NonIdleLanes) !== NoLanes;
 }
+
+export function includesBlockingLane(root, lanes) {
+  const SyncDefaultLanes = InputContinuousLane | DefaultLane;
+  return (lanes & SyncDefaultLanes) !== NoLanes;
+}
+
+export function isSubsetOfLanes(set, subset) {
+  return (set & subset) === subset;
+}
+
+export function mergeLanes(a, b) {
+  return a | b;
+}

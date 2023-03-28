@@ -21,6 +21,7 @@ import { MutationMask, NoFlags, Passive } from "./ReactFiberFlags";
 import {
   getHighestPriorityLane,
   getNextLanes,
+  includesBlockingLane,
   markRootUpdated,
   NoLanes,
   SyncLane,
@@ -29,7 +30,7 @@ import {
   IdlePriority as IdleSchedulerPriority,
   ImmediatePriority as ImmediateSchedulerPriority,
   NormalPriority as NormalSchedulerPriority,
-  scheduleCallback,
+  scheduleCallback as Scheduler_scheduleCallback,
   shouldYield,
   UserBlockingPriority as UserBlockingSchedulerPriority,
 } from "./Scheduler";
@@ -81,7 +82,7 @@ function ensureRootIsScheduled(root) {
         schedulerPriorityLevel = NormalSchedulerPriority;
         break;
     }
-    scheduleCallback(
+    Scheduler_scheduleCallback(
       schedulerPriorityLevel,
       performConcurrentWorkOnRoot.bind(null, root)
     );
@@ -107,12 +108,21 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
   if (nextLanes === NoLanes) {
     return null;
   }
-  // 第一次渲染是同步的
-  renderRootSync(root, nextLanes);
+  const shouldTimeSlice = !includesBlockingLane(root, nextLanes) && !didTimeout;
+  if (shouldTimeSlice) {
+    renderRootConcurrent(root, nextLanes);
+  } else {
+    // 第一次渲染是同步的
+    renderRootSync(root, nextLanes);
+  }
   // 开始进入提交阶段，就是执行副作用修改真实dom
   const finishedWork = root.current.alternate;
   root.finishedWork = finishedWork;
   commitRoot(root);
+}
+
+function renderRootConcurrent(root, lanes) {
+  console.log(root, lanes);
 }
 
 function flushPassiveEffect() {
@@ -139,7 +149,7 @@ function commitRoot(root) {
       if (!rootDoesHavePassiveEffect) {
         rootDoesHavePassiveEffect = true;
         // 开启一个宏任务 等待渲染过后执行
-        scheduleCallback(NormalSchedulerPriority, flushPassiveEffect);
+        Scheduler_scheduleCallback(NormalSchedulerPriority, flushPassiveEffect);
       }
     }
   }

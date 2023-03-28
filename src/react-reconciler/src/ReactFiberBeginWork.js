@@ -78,6 +78,7 @@ export function mountIndeterminateComponent(
 }
 
 function updateHostRoot(current, workInProgress, renderLanes) {
+  debugger;
   const nextProps = workInProgress.pendingProps;
   cloneUpdateQueue(current, workInProgress);
   processUpdateQueue(workInProgress, nextProps, renderLanes);
