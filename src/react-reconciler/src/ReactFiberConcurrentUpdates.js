@@ -1,3 +1,4 @@
+import { mergeLanes } from "./ReactFiberLane";
 import { HostRoot } from "./ReactWorkTags";
 
 // 并发更新队列
@@ -34,7 +35,7 @@ export function finishQueueingConcurrentUpdates() {
  * @param {*} update 更新对象
  */
 export function enqueueConcurrentHookUpdate(fiber, queue, update, lane) {
-  enqueueUpdate(fiber, queue, update);
+  enqueueUpdate(fiber, queue, update, lane);
   return getRootForUpdatedFiber(fiber);
 }
 
@@ -59,6 +60,8 @@ function enqueueUpdate(fiber, queue, update, lane) {
   concurrentQueues[concurrentQueuesIndex++] = queue;
   concurrentQueues[concurrentQueuesIndex++] = update;
   concurrentQueues[concurrentQueuesIndex++] = lane;
+  // 当我们项fiber上添加一个更新的时候，要把此更新的赛道合并到此fiber的赛道上
+  fiber.lanes = mergeLanes(fiber.lanes, lane);
 }
 
 /**

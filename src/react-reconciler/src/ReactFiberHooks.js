@@ -4,7 +4,7 @@ import {
   Passive as PassiveEffect,
   Update as UpdateEffect,
 } from "./ReactFiberFlags";
-import { isSubsetOfLanes, mergeLanes, NoLanes } from "./ReactFiberLane";
+import { isSubsetOfLanes, mergeLanes, NoLane, NoLanes } from "./ReactFiberLane";
 import { requestUpdateLane, scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
 import {
   HasEffect as HookHasEffect,
@@ -200,6 +200,7 @@ function dispatchSetState(fiber, queue, action) {
     next: null,
   };
   const alternate = fiber.alternate;
+  // 只有第一个更新进行此项优化 否则会导致使用旧的数据算出错误的数据
   // 当更新队列为空时 派发状态后立刻用上一次的状态和reducer计算状态 如果新状态和老状态一样则不需要更新
   if (
     fiber.lanes === NoLanes &&

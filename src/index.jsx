@@ -2,28 +2,19 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 
 function FunctionComponent() {
-  console.log("FunctionComponent");
-  const initialState = new Array(10).fill("A");
-  const [numbers, setNumbers] = React.useState(initialState);
-  React.useEffect(() => {
-    setNumbers((numbers) => {
-      return numbers.map((number) => number + "B");
-    });
-  }, []);
+  const [numbers, setNumbers] = React.useState(0);
+  const [number, setNumber] = React.useState(0);
   return (
     <div>
       <button
         onClick={() => {
-          setNumbers((numbers) => numbers.map((number) => number + "C"));
+          setNumber((number) => number + 1);
+          setNumbers((number) => number + 2);
         }}
       >
-        click
+        {number}
+        {numbers}
       </button>
-      <ul>
-        {numbers.map((number, index) => (
-          <li key={index}>{number}</li>
-        ))}
-      </ul>
     </div>
   );
 }

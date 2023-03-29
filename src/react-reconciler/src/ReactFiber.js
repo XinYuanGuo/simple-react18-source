@@ -1,4 +1,5 @@
 import { NoFlags } from "./ReactFiberFlags";
+import { NoLanes } from "./ReactFiberLane";
 import {
   HostComponent,
   HostRoot,
@@ -84,6 +85,8 @@ export function FiberNode(tag, pendingProps, key) {
   this.index = 0;
   // 存放将要删除的子fiber
   this.deletions = null;
+  this.lanes = NoLanes;
+  this.childLanes = NoLanes;
 }
 
 /**
