@@ -44,13 +44,19 @@ export function markRootUpdated(root, updateLane) {
   root.pendingLanes |= updateLane;
 }
 
-export function getNextLanes(root) {
+export function getNextLanes(root, workInProgressLanes) {
   // 先获取所有有更新的车道
   const pendingLanes = root.pendingLanes;
   if (pendingLanes === NoLanes) {
     return NoLanes;
   }
+  // 获取最高优先级的车道
   const nextLanes = getHighestPriorityLanes(pendingLanes);
+  if (workInProgressLanes !== NoLanes && workInProgressLanes !== nextLanes) {
+    if (nextLanes > workInProgressLanes) {
+      return workInProgressLanes;
+    }
+  }
   return nextLanes;
 }
 

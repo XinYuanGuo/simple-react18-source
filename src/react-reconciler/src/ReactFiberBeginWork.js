@@ -48,12 +48,19 @@ export function beginWork(current, workInProgress, renderLanes) {
   }
 }
 
-function updateFunctionComponent(current, workInProgress, Component, newProps) {
+function updateFunctionComponent(
+  current,
+  workInProgress,
+  Component,
+  newProps,
+  renderLanes
+) {
   const nextChildren = renderWithHooks(
     current,
     workInProgress,
     Component,
-    newProps
+    newProps,
+    renderLanes
   );
   reconcileChildren(current, workInProgress, nextChildren);
   return workInProgress.child;
@@ -68,10 +75,17 @@ function updateFunctionComponent(current, workInProgress, Component, newProps) {
 export function mountIndeterminateComponent(
   current,
   workInProgress,
-  Component
+  Component,
+  renderLanes
 ) {
   const props = workInProgress.pendingProps;
-  const value = renderWithHooks(current, workInProgress, Component, props);
+  const value = renderWithHooks(
+    current,
+    workInProgress,
+    Component,
+    props,
+    renderLanes
+  );
   workInProgress.tag = FunctionComponent;
   reconcileChildren(current, workInProgress, value);
   return workInProgress.child;

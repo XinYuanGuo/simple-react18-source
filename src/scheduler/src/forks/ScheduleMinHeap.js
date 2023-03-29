@@ -23,15 +23,16 @@ export function peek(heap) {
  * @param {*} heap
  */
 export function pop(heap) {
-  // 取出数组中第一个也就是堆顶元素
   const first = heap[0];
   if (first !== undefined) {
-    // 取出数组中最后一个元素
     const last = heap.pop();
     if (last !== first) {
       heap[0] = last;
       siftDown(heap, last, 0);
     }
+    return first;
+  } else {
+    return null;
   }
 }
 

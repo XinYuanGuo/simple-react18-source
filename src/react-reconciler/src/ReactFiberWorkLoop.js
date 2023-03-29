@@ -20,6 +20,7 @@ import { completeWork } from "./ReactFiberCompleteWork";
 import { finishQueueingConcurrentUpdates } from "./ReactFiberConcurrentUpdates";
 import { MutationMask, NoFlags, Passive } from "./ReactFiberFlags";
 import {
+  DefaultLane,
   getHighestPriorityLane,
   getNextLanes,
   includesBlockingLane,
@@ -32,9 +33,11 @@ import {
   scheduleSyncCallback,
 } from "./ReactFiberSyncTaskQueue";
 import {
+  cancelCallback as Schedule_cancelCallback,
   IdlePriority as IdleSchedulerPriority,
   ImmediatePriority as ImmediateSchedulerPriority,
   NormalPriority as NormalSchedulerPriority,
+  now,
   scheduleCallback as Scheduler_scheduleCallback,
   shouldYield,
   UserBlockingPriority as UserBlockingSchedulerPriority,
@@ -80,9 +83,10 @@ function performSyncWorkOnRoot(root) {
   return null;
 }
 
-function ensureRootIsScheduled(root) {
+function ensureRootIsScheduled(root, currentTime) {
+  const existingCallbackNode = root.callbackNode;
   // 获取当前优先级最高的车道
-  const nextLanes = getNextLanes(root, NoLanes);
+  const nextLanes = getNextLanes(root, workInProgressRootRenderLanes);
   // 如果没有要执行的任务
   if (nextLanes === NoLanes) {
     return;
@@ -90,8 +94,18 @@ function ensureRootIsScheduled(root) {
 
   // 获取新的调度优先级
   let newCallbackPriority = getHighestPriorityLane(nextLanes);
+  // 现在根上正在运行的优先级
+  const existingCallbackPriority = root.callbackPriority;
+  // 如果新的优先级和当前正在运行的优先级一样 则可以批量更新
+  if (existingCallbackPriority === newCallbackPriority) {
+    return;
+  }
+  if (existingCallbackNode !== null) {
+    console.log("cancelCallback");
+    Schedule_cancelCallback(existingCallbackNode);
+  }
   // 新的回调节点
-  let newCallbackNode;
+  let newCallbackNode = null;
   // 如果是同步赛道
   if (newCallbackPriority === SyncLane) {
     // 先把performSyncWorkOnRoot添加到同步队列中
@@ -124,6 +138,7 @@ function ensureRootIsScheduled(root) {
       performConcurrentWorkOnRoot.bind(null, root)
     );
   }
+  root.callbackPriority = newCallbackPriority;
   // 在根节点执行的任务是newCallbackNode
   root.callbackNode = newCallbackNode;
   // if (workInProgressRoot) {
@@ -216,8 +231,9 @@ function commitRootImpl(root) {
   // 先获取新的构建好的fiber树的根fiber
   const { finishedWork } = root;
   workInProgressRoot = null;
-  workInProgressRootRenderLanes = null;
+  workInProgressRootRenderLanes = NoLanes;
   root.callbackNode = null;
+  root.callbackPriority = NoLanes;
   if (finishedWork) {
     if (
       (finishedWork.subtreeFlags & Passive) !== NoFlags ||
@@ -246,6 +262,8 @@ function commitRootImpl(root) {
   }
   // 等dom变更后，可以把root的current指向新的fiber树
   root.current = finishedWork;
+  root.pendingLanes = DefaultLane;
+  // ensureRootIsScheduled(root, now());
 }
 
 function renderRootSync(root, renderLanes) {
@@ -256,6 +274,7 @@ function renderRootSync(root, renderLanes) {
     prepareFreshStack(root, renderLanes);
   }
   workLoopSync();
+  return RootComplete;
 }
 
 function prepareFreshStack(root, renderLanes) {
@@ -273,7 +292,17 @@ function workLoopSync() {
 
 function workLoopConcurrent() {
   while (workInProgress !== null && !shouldYield()) {
+    sleep(100);
     performUnitOfWork(workInProgress);
+  }
+}
+
+function sleep(duration) {
+  let now = Date.now();
+  while (true) {
+    if (Date.now() >= now + duration) {
+      return;
+    }
   }
 }
 
@@ -327,4 +356,9 @@ export function requestUpdateLane() {
   }
   const eventLane = getCurrentEventPriority();
   return eventLane;
+}
+
+export function requestEventTime() {
+  currentEventTime = now();
+  return currentEventTime;
 }

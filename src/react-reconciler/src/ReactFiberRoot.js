@@ -6,6 +6,7 @@ function FiberRootNode(containerInfo) {
   this.containerInfo = containerInfo;
   // 表示根上有哪些赛道等待被处理
   this.pendingLanes = NoLanes;
+  this.callbackNode = null;
 }
 
 /**

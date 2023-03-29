@@ -109,7 +109,7 @@ function workLoop(startTime) {
       break;
     }
     // 取出当前任务的回调函数
-    const callback = currentTask.callback();
+    const callback = currentTask.callback;
     if (typeof callback === "function") {
       currentTask.callback = null;
       const didUserCallbackTimeout = currentTask.expirationTime <= currentTime;
@@ -169,9 +169,15 @@ function performWorkUntilDeadline() {
   }
 }
 
+function unstable_cancelCallback(task) {
+  task.callback = null;
+}
+
 export {
+  unstable_cancelCallback,
   shouldYieldToHost as unstable_shouldYield,
   scheduleCallback as unstable_scheduleCallback,
+  getCurrentTime as unstable_now,
   IdlePriority as unstable_IdlePriority,
   ImmediatePriority as unstable_ImmediatePriority,
   LowPriority as unstable_LowPriority,
