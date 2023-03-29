@@ -6,7 +6,7 @@ function FunctionComponent() {
   return (
     <button
       onClick={() => {
-        setNumber(number + 1);
+        setNumber((number) => number + 1);
       }}
     >
       {number}

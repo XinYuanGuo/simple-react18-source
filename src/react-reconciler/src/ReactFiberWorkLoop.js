@@ -49,6 +49,13 @@ let rootDoesHavePassiveEffect = false;
 let rootWithPendingPassiveEffects = null;
 let workInProgressRootRenderLanes = NoLanes;
 
+// 正在构建fiber树
+const RootInProgress = 0;
+// 完成构建fiber树
+const RootComplete = 5;
+// 当渲染工作结束时 当前的fiber树处于什么状态， 默认是进行中
+let workInProgressRootExitStatus = RootInProgress;
+
 /**
  * 计划更新root节点
  * 源码中此处有一个任务调度的功能
@@ -76,14 +83,22 @@ function performSyncWorkOnRoot(root) {
 function ensureRootIsScheduled(root) {
   // 获取当前优先级最高的车道
   const nextLanes = getNextLanes(root, NoLanes);
+  // 如果没有要执行的任务
+  if (nextLanes === NoLanes) {
+    return;
+  }
+
   // 获取新的调度优先级
   let newCallbackPriority = getHighestPriorityLane(nextLanes);
+  // 新的回调节点
+  let newCallbackNode;
   // 如果是同步赛道
   if (newCallbackPriority === SyncLane) {
     // 先把performSyncWorkOnRoot添加到同步队列中
     scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root));
     // 把flushSyncCallbacks放入微任务中
     queueMicrotask(flushSyncCallbacks);
+    newCallbackNode = null;
   } else {
     // 如果不是同步赛道 就需要调度一个新的任务
     let schedulerPriorityLevel;
@@ -104,11 +119,13 @@ function ensureRootIsScheduled(root) {
         schedulerPriorityLevel = NormalSchedulerPriority;
         break;
     }
-    Scheduler_scheduleCallback(
+    newCallbackNode = Scheduler_scheduleCallback(
       schedulerPriorityLevel,
       performConcurrentWorkOnRoot.bind(null, root)
     );
   }
+  // 在根节点执行的任务是newCallbackNode
+  root.callbackNode = newCallbackNode;
   // if (workInProgressRoot) {
   //   return;
   // }
@@ -125,26 +142,48 @@ function ensureRootIsScheduled(root) {
  * @param {*} root
  */
 function performConcurrentWorkOnRoot(root, didTimeout) {
+  const originalCallbackNode = root.callbackNode;
   // 获取当前优先级最高的车道
   const nextLanes = getNextLanes(root, NoLanes);
   if (nextLanes === NoLanes) {
     return null;
   }
+  // 如果不包含阻塞的车道并且没有超时 那么启用并行渲染 启用时间分片
   const shouldTimeSlice = !includesBlockingLane(root, nextLanes) && !didTimeout;
+  let exitStatus;
   if (shouldTimeSlice) {
-    renderRootConcurrent(root, nextLanes);
+    exitStatus = renderRootConcurrent(root, nextLanes);
   } else {
     // 第一次渲染是同步的
-    renderRootSync(root, nextLanes);
+    exitStatus = renderRootSync(root, nextLanes);
   }
-  // 开始进入提交阶段，就是执行副作用修改真实dom
-  const finishedWork = root.current.alternate;
-  root.finishedWork = finishedWork;
-  commitRoot(root);
+  // 如果不是渲染中 那说明已经渲染完了
+  if (exitStatus !== RootInProgress) {
+    const finishedWork = root.current.alternate;
+    root.finishedWork = finishedWork;
+    commitRoot(root);
+  }
+  // 说明任务没有完成
+  if (root.callbackNode === originalCallbackNode) {
+    return performConcurrentWorkOnRoot.bind(null, root);
+  }
+  return null;
 }
 
 function renderRootConcurrent(root, lanes) {
-  console.log(root, lanes);
+  // 因为在构建fiber树的过程中，此方法会反复进入多次
+  // 只有在第一次进入的时候会创建新的fiber树 后续会沿用上一次的结果
+  if (workInProgressRoot !== root || workInProgressRootRenderLanes !== lanes) {
+    prepareFreshStack(root, lanes);
+  }
+  // 在当前分配的时间片内执行fiber树的构建
+  workLoopConcurrent();
+  // 说明fiber树的构建还未完成
+  if (workInProgress !== null) {
+    return RootInProgress;
+  }
+  // 如果workInProgress为null 说明渲染工作结束了
+  return workInProgressRootExitStatus;
 }
 
 function flushPassiveEffect() {
@@ -178,6 +217,7 @@ function commitRootImpl(root) {
   const { finishedWork } = root;
   workInProgressRoot = null;
   workInProgressRootRenderLanes = null;
+  root.callbackNode = null;
   if (finishedWork) {
     if (
       (finishedWork.subtreeFlags & Passive) !== NoFlags ||
@@ -219,12 +259,7 @@ function renderRootSync(root, renderLanes) {
 }
 
 function prepareFreshStack(root, renderLanes) {
-  if (
-    root !== workInProgressRoot ||
-    workInProgressRootRenderLanes !== renderLanes
-  ) {
-    workInProgress = createWorkInProgress(root.current, null);
-  }
+  workInProgress = createWorkInProgress(root.current, null);
   workInProgressRootRenderLanes = renderLanes;
   workInProgressRoot = root;
   finishQueueingConcurrentUpdates();
@@ -275,6 +310,10 @@ function completeUnitOfWork(unitOfWork) {
     completedWork = returnFiber;
     workInProgress = completedWork;
   } while (completedWork !== null);
+  // 如果走到了这边 说明整个fiber树全部构建完毕
+  if (workInProgressRootExitStatus === RootInProgress) {
+    workInProgressRootExitStatus = RootComplete;
+  }
 }
 
 /**

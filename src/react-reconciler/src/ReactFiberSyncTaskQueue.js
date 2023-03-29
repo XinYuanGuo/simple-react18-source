@@ -11,7 +11,7 @@ let isFlushingSyncQueue = false;
 
 export function scheduleSyncCallback(callback) {
   if (syncQueue === null) {
-    syncQueue = callback;
+    syncQueue = [callback];
   } else {
     syncQueue.push(callback);
   }

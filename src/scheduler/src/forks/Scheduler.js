@@ -80,6 +80,7 @@ export function scheduleCallback(priorityLevel, callback) {
   // 向最小堆中添加任务，排序的依据是过期时间
   push(taskQueue, newTask);
   requestHostCallback(flushWork);
+  return newTask;
 }
 
 function flushWork(startTime) {
@@ -169,7 +170,7 @@ function performWorkUntilDeadline() {
 }
 
 export {
-  shouldYieldToHost as shouldYield,
+  shouldYieldToHost as unstable_shouldYield,
   scheduleCallback as unstable_scheduleCallback,
   IdlePriority as unstable_IdlePriority,
   ImmediatePriority as unstable_ImmediatePriority,
