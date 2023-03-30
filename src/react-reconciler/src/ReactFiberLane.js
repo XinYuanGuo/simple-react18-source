@@ -34,6 +34,9 @@ export const OffscreenLane = /*                   */ 0b1000000000000000000000000
 // 非空闲的lane
 const NonIdleLanes = /*                          */ 0b0001111111111111111111111111111;
 
+// 没有时间戳
+export const NoTimestamp = -1;
+
 /**
  * 标记根节点更新
  * @param {*} root
@@ -94,4 +97,79 @@ export function isSubsetOfLanes(set, subset) {
 
 export function mergeLanes(a, b) {
   return a | b;
+}
+
+export function includesExpiredLane(root, lanes) {
+  return (root.expiredLanes & lanes) !== NoLanes;
+}
+
+/**
+ * 最左侧1的索引
+ * @param {*} lanes
+ */
+function pickArbitraryLaneIndex(lanes) {
+  // Math.clz32 返回最左侧1的左边0的个数
+  return 31 - Math.clz32(lanes);
+}
+
+export function markStarvedLanesAsExpired(root, currentTime) {
+  // 获取当前有更新的赛道
+  const pendingLanes = root.pendingLanes;
+  // 每个赛道上的过期时间
+  const expirationTimes = root.expirationTimes;
+  let lanes = pendingLanes;
+  while (lanes > 0) {
+    // 获取最左侧1的索引
+    const index = pickArbitraryLaneIndex(lanes);
+    // 拿到赛道
+    const lane = 1 << index;
+    const expirationTime = expirationTimes[index];
+    // 如果此赛道上没有过期时间 说明没有为此赛道设置过期时间
+    if (expirationTime === NoTimestamp) {
+      expirationTimes[index] = computeExpirationTime(lane, currentTime);
+    } else if (expirationTime <= currentTime) {
+      // 如果此赛道的过期时间已经小于等于当前时间 把此赛道添加到过期赛道中
+      root.expiredLanes |= lane;
+    }
+    lanes &= ~lane;
+  }
+}
+
+function computeExpirationTime(lane, currentTime) {
+  switch (lane) {
+    case SyncLane:
+    case InputContinuousLane:
+      return currentTime + 250;
+    case DefaultLane:
+      return currentTime + 5000;
+    case IdleLane:
+    default:
+      return NoTimestamp;
+  }
+}
+
+export function createLaneMap(initial) {
+  const laneMap = [];
+  for (let i = 0; i < TotalLanes; i++) {
+    laneMap.push(initial);
+  }
+  return laneMap;
+}
+
+export function markRootFinished(root, remainingLanes) {
+  // pendingLanes是根上将要被渲染的车道
+  // noLongerPendingLanes指的是已经更新过的lane
+  const noLongerPendingLanes = root.pendingLanes & ~remainingLanes;
+  root.pendingLanes = remainingLanes;
+  let expirationTimes = root.expirationTimes;
+  let lanes = noLongerPendingLanes;
+  while (lanes > 0) {
+    // 获取最左侧1的索引
+    const index = pickArbitraryLaneIndex(lanes);
+    // 拿到赛道
+    const lane = 1 << index;
+    // 清除已经更新过的lane
+    expirationTimes = expirationTimes[index] = NoTimestamp;
+    lanes &= ~lane;
+  }
 }

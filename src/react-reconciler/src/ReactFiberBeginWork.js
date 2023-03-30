@@ -5,6 +5,7 @@ import {
   processUpdateQueue,
 } from "./ReactFiberClassUpdateQueue";
 import { renderWithHooks } from "./ReactFiberHooks";
+import { NoLanes } from "./ReactFiberLane";
 import {
   FunctionComponent,
   HostComponent,
@@ -19,6 +20,8 @@ import {
  * @param {*} workInProgress 新fiber
  */
 export function beginWork(current, workInProgress, renderLanes) {
+  // 在构建fiber树之前清空fiber的lane
+  workInProgress.lanes = NoLanes;
   switch (workInProgress.tag) {
     case IndeterminateComponent:
       return mountIndeterminateComponent(

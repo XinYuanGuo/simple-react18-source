@@ -37,6 +37,10 @@ export function createWorkInProgress(current, pendingProps) {
   workInProgress.updateQueue = current.updateQueue;
   workInProgress.sibling = current.sibling;
   workInProgress.index = current.index;
+  workInProgress.ref = current.ref;
+  workInProgress.flags = current.flags;
+  workInProgress.lanes = current.lanes;
+  workInProgress.childLanes = current.childLanes;
   return workInProgress;
 }
 
@@ -87,6 +91,7 @@ export function FiberNode(tag, pendingProps, key) {
   this.deletions = null;
   this.lanes = NoLanes;
   this.childLanes = NoLanes;
+  this.ref = null;
 }
 
 /**

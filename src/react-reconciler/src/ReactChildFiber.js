@@ -67,6 +67,7 @@ function createChildReconciler(shouldTracksSideEffects) {
           // 认为此节点可以复用
           deleteRemainingChildren(returnFiber, child.sibling);
           const existing = useFiber(child, element.props);
+          existing.ref = element.ref;
           existing.return = returnFiber;
           return existing;
         }
@@ -79,6 +80,7 @@ function createChildReconciler(shouldTracksSideEffects) {
     }
 
     const created = createFiberFromElement(element);
+    created.ref = element.ref;
     created.return = returnFiber;
     return created;
   }
@@ -105,6 +107,7 @@ function createChildReconciler(shouldTracksSideEffects) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
           const created = createFiberFromElement(newChild);
+          created.ref = newChild.ref;
           created.return = returnFiber;
           return created;
 
@@ -144,12 +147,14 @@ function createChildReconciler(shouldTracksSideEffects) {
       // 如果类型也一样 那么这个节点可以复用
       if (current.type === elementType) {
         const existing = useFiber(current, element.props);
+        existing.ref = element.ref;
         existing.return = returnFiber;
         return existing;
       }
     }
     // 类型不同则为新的节点
     const created = createFiberFromElement(element);
+    created.ref = element.ref;
     created.return = returnFiber;
     return created;
   }

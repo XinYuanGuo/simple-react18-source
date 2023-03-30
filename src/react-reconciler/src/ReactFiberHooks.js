@@ -5,7 +5,11 @@ import {
   Update as UpdateEffect,
 } from "./ReactFiberFlags";
 import { isSubsetOfLanes, mergeLanes, NoLane, NoLanes } from "./ReactFiberLane";
-import { requestUpdateLane, scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
+import {
+  requestEventTime,
+  requestUpdateLane,
+  scheduleUpdateOnFiber,
+} from "./ReactFiberWorkLoop";
 import {
   HasEffect as HookHasEffect,
   Layout as HookLayout,
@@ -27,6 +31,7 @@ const HooksDispatcherOnMount = {
   useState: mountState,
   useEffect: mountEffect,
   useLayoutEffect: mountLayoutEffect,
+  useRef: mountRef,
 };
 
 const HooksDispatcherOnUpdate = {
@@ -34,7 +39,22 @@ const HooksDispatcherOnUpdate = {
   useState: updateState,
   useEffect: updateEffect,
   useLayoutEffect: updateLayoutEffect,
+  useRef: updateRef,
 };
+
+function mountRef(initialValue) {
+  const hook = mountWorkInProgressHook();
+  const ref = {
+    current: initialValue,
+  };
+  hook.memoizedState = ref;
+  return ref;
+}
+
+function updateRef() {
+  const hook = updateWorkInProgressHook();
+  return hook.memoizedState;
+}
 
 function mountLayoutEffect(create, deps) {
   return mountEffectImpl(UpdateEffect, HookLayout, create, deps);
@@ -217,7 +237,8 @@ function dispatchSetState(fiber, queue, action) {
 
   // 下面是真正的入队更新，并调度更新逻辑
   const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane);
-  scheduleUpdateOnFiber(root, fiber, lane);
+  const eventTime = requestEventTime();
+  scheduleUpdateOnFiber(root, fiber, lane, eventTime);
 }
 
 // 构建新的hook
@@ -235,6 +256,7 @@ function updateWorkInProgressHook() {
     memoizedState: currentHook.memoizedState,
     queue: currentHook.queue,
     baseQueue: currentHook.baseQueue,
+    baseState: currentHook.baseState,
     next: null,
   };
 
@@ -284,6 +306,7 @@ function updateReducer(reducer) {
   let baseQueue = current.baseQueue;
   // 获取将要生效的队列
   const pendingQueue = queue.pending;
+  // 新旧链表合并
   if (pendingQueue !== null) {
     if (baseQueue !== null) {
       const baseFirst = baseQueue.next;
@@ -384,6 +407,7 @@ function mountReducer(reducer, initialArg) {
  * @param {*} action
  */
 function dispatchReducerAction(fiber, queue, action) {
+  const lane = requestUpdateLane();
   // 在每个hook里会存放一个更新队列，更新队列是一个更新对象的循环链表
   const update = {
     action,
@@ -391,7 +415,8 @@ function dispatchReducerAction(fiber, queue, action) {
   };
   // 把当前最新的更新添加到更新队列中，并返回当前的根fiber
   const root = enqueueConcurrentHookUpdate(fiber, queue, update);
-  scheduleUpdateOnFiber(root, fiber);
+  const eventTime = requestEventTime();
+  scheduleUpdateOnFiber(root, fiber, lane, eventTime);
 }
 
 /**
@@ -405,7 +430,10 @@ function mountWorkInProgressHook() {
     queue: null,
     // 指向下一个hook
     next: null,
+    // 跳过的更新链表
     baseQueue: null,
+    // 第一个跳过的更新前的状态
+    baseState: null,
   };
 
   // 是否是第一个hook
@@ -436,7 +464,10 @@ export function renderWithHooks(
   renderLanes = nextRenderLanes;
   currentlyRenderingFiber = workInProgress;
   // 每次渲染之前清除更新队列
+  // 更新队列里存的是effect
   workInProgress.updateQueue = null;
+  // 函数组件的memoizedState存的是hooks链表
+  workInProgress.memoizedState = null;
   // 如果有老的fiber并且有老的hook链表
   if (current !== null && current.memoizedState !== null) {
     ReactCurrentDispatcher.current = HooksDispatcherOnUpdate;

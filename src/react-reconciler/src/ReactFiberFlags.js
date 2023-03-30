@@ -4,9 +4,10 @@ export const Placement = /*                    */ 0b0000000000000000000000000010
 export const DidCapture = /*                   */ 0b0000000000000000000010000000;
 export const Hydrating = /*                    */ 0b0000000000000001000000000000;
 export const Update = /*                       */ 0b0000000000000000000000000100;
+export const Ref = /*                          */ 0b0000000000000000001000000000;
 // 子节点需要删除
 export const ChildDeletion = /*                */ 0b0000000000000000000000010000;
 export const Passive = /*                      */ 0b0000000000000000100000000000;
 
-export const MutationMask = Placement | Update | ChildDeletion;
+export const MutationMask = Placement | Update | ChildDeletion | Ref;
 export const LayoutMask = Update;
