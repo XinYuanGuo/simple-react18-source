@@ -8,8 +8,11 @@ export function jsxDEV(type, config, maybeKey) {
   const props = {};
   let key = null;
   let ref = null;
-  if (typeof maybeKey !== undefined) {
-    key = maybeKey;
+  if (maybeKey !== undefined) {
+    key = "" + maybeKey;
+  }
+  if (hasValidKey(config)) {
+    key = "" + config.key;
   }
   if (hasValidRef(config)) {
     ref = config.ref;
